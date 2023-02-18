@@ -1,11 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/kickbu2towski/unicorn-be/cmd/api/internal/data"
+	"github.com/kickbu2towski/unicorn-be/cmd/api/internal/validator"
 )
 
 func (app *application) showTodoItem(w http.ResponseWriter, r *http.Request) {
@@ -31,5 +33,32 @@ func (app *application) showTodoItem(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) createTodoItem(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("creating a new todo item\n"))
+	var input struct {
+		Name     string   `json:"name"`
+		State    string   `json:"state"`
+		Priority string   `json:"priority"`
+		Tags     []string `json:"tags"`
+	}
+
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequest(w, r, err.Error())
+		return
+	}
+
+	todoItem := data.TodoItem{
+		Name:     input.Name,
+		State:    input.State,
+		Priority: input.Priority,
+		Tags:     input.Tags,
+	}
+
+	v := validator.New()
+	data.ValidateTodoItem(v, &todoItem)
+	if !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	fmt.Fprintf(w, "%+v\n", input)
 }

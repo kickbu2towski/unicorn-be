@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 )
 
@@ -21,5 +23,19 @@ func (app *application) writeJSON(w http.ResponseWriter, data any, headers http.
 
 	w.WriteHeader(status)
 	w.Write(js)
+	return nil
+}
+
+func (app *application) readJSON(w http.ResponseWriter, r *http.Request, data any) error {
+	err := json.NewDecoder(r.Body).Decode(data)
+	// TODO: triage those errors returned from Decode
+	if err != nil {
+		switch {
+		case errors.Is(err, io.EOF):
+			return errors.New("received empty body")
+		default:
+			return errors.New("received malformed json")
+		}
+	}
 	return nil
 }
