@@ -5,6 +5,9 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 type envelope map[string]any
@@ -38,4 +41,13 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, data an
 		}
 	}
 	return nil
+}
+
+func (app *application) readIDParam(r *http.Request) (int64, error) {
+	params := httprouter.ParamsFromContext(r.Context())
+	id, err := strconv.Atoi(params.ByName("id"))
+	if err != nil || id < 1 {
+		return -1, err
+	}
+	return int64(id), nil
 }
