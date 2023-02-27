@@ -1,0 +1,20 @@
+{{define "subject"}} Activate your account {{end}}
+
+{{define "plainTextBody"}} 
+ Hey, thanks for signing up for unicorn account.
+ Your account ID is {{ .ID }}
+{{end}}
+
+{{define "htmlBody"}} 
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width">
+  </head>
+  <body>
+    <p>Hey, thanks for signing up for unicorn account.</p>
+    <p>Your account ID is {{ .ID }}</p>
+  </body>
+  </html>
+{{end}}

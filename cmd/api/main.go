@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/kickbu2towski/unicorn-be/cmd/api/internal/data"
+	"github.com/kickbu2towski/unicorn-be/cmd/api/internal/mailer"
 	_ "github.com/lib/pq"
 )
 
@@ -20,6 +21,7 @@ type application struct {
 	config config
 	logger *log.Logger
 	models data.Models
+	mailer *mailer.Mailer
 }
 
 type config struct {
@@ -28,6 +30,11 @@ type config struct {
 	db   struct {
 		dsn string
 	}
+	mail struct {
+		sender   string
+		username string
+		password string
+	}
 }
 
 func main() {
@@ -35,6 +42,9 @@ func main() {
 	flag.IntVar(&cfg.port, "port", 7777, "API port")
 	flag.StringVar(&cfg.env, "env", "dev", "Environment (dev|staging|prod)")
 	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("UNICORN_DB_DSN"), "PosgreSQL DSN")
+	flag.StringVar(&cfg.mail.sender, "mail-sender", os.Getenv("UNICORN_MAIL_SENDER"), "Mail sender")
+	flag.StringVar(&cfg.mail.username, "mail-username", os.Getenv("UNICORN_MAIL_USERNAME"), "Mail username")
+	flag.StringVar(&cfg.mail.password, "mail-password", os.Getenv("UNICORN_MAIL_PASSWORD"), "Mail password")
 	flag.Parse()
 
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
@@ -50,6 +60,11 @@ func main() {
 		config: cfg,
 		logger: logger,
 		models: data.NewModels(db),
+		mailer: mailer.NewMailer(
+			cfg.mail.username,
+			cfg.mail.password,
+			cfg.mail.sender,
+		),
 	}
 
 	server := &http.Server{
