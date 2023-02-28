@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/kickbu2towski/unicorn-be/cmd/api/internal/data"
 	"github.com/kickbu2towski/unicorn-be/cmd/api/internal/validator"
@@ -45,8 +46,21 @@ func (app *application) registerUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, err := app.models.TokenModel.New(user.ID, (3*24)*time.Hour, data.ScopeActivation)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
 	app.background(func() {
-		err := app.mailer.Send(user.Email, "activate_user.tmpl", &user)
+		tmplData := struct {
+			ActivationToken string
+			ID              int64
+		}{
+			ActivationToken: token,
+			ID:              user.ID,
+		}
+		err := app.mailer.Send(user.Email, "activate_user.tmpl", &tmplData)
 		if err != nil {
 			app.logger.Print(err)
 		}

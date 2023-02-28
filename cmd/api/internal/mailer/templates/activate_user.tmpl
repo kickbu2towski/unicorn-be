@@ -1,8 +1,11 @@
 {{define "subject"}} Activate your account {{end}}
 
 {{define "plainTextBody"}} 
- Hey, thanks for signing up for unicorn account.
- Your account ID is {{ .ID }}
+ Hey, thanks for signing up for a unicorn account.
+ For future reference, your account number is {{ .ID }}
+
+ To activate your account, make a PUT request to this endpoint `/v1/users/activate` with the following POST body:
+ {"token": "{{ .ActivationToken }}"}
 {{end}}
 
 {{define "htmlBody"}} 
@@ -15,6 +18,14 @@
   <body>
     <p>Hey, thanks for signing up for unicorn account.</p>
     <p>Your account ID is {{ .ID }}</p>
+
+    <p>To activate your account, make a PUT request to this endpoint <code>/v1/users/activate</code> with the following POST body:
+    
+    <pre>
+      <code>
+       {"token": "{{ .ActivationToken }}"}
+      </code>
+    </pre>
   </body>
   </html>
 {{end}}

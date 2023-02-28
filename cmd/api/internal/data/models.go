@@ -8,13 +8,13 @@ import (
 var ErrNoRecord = errors.New("record not found")
 
 type Models struct {
-	UserModel UserModel
+	UserModel  UserModel
+	TokenModel TokenModel
 }
 
 func NewModels(DB *sql.DB) Models {
 	return Models{
-		UserModel: UserModel{
-			DB: DB,
-		},
+		UserModel:  UserModel{DB},
+		TokenModel: TokenModel{DB},
 	}
 }
