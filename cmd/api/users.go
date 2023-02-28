@@ -71,3 +71,50 @@ func (app *application) registerUser(w http.ResponseWriter, r *http.Request) {
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+func (app *application) activateUser(w http.ResponseWriter, r *http.Request) {
+	// 1. read json
+	var input struct {
+		Token string `json:"token"`
+	}
+
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequest(w, r, err.Error())
+		return
+	}
+
+	// 2. validate token
+	v := validator.New()
+	if data.ValidateToken(v, input.Token); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	// 3. get user for token
+	user, err := app.models.UserModel.GetForToken(input.Token)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrNoRecord):
+			v.AddError("token", "invalid token or token expired")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	// 4. activate user
+	user.Activated = true
+	err = app.models.UserModel.Update(user)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// 5. send response
+	err = app.writeJSON(w, envelope{"message": "user activation successful"}, nil, http.StatusOK)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}

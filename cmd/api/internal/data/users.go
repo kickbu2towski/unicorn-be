@@ -1,6 +1,7 @@
 package data
 
 import (
+	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"time"
@@ -60,4 +61,48 @@ func (m *UserModel) Insert(user *User) error {
 	}
 
 	return nil
+}
+
+func (m *UserModel) GetForToken(token string) (*User, error) {
+	var user User
+	hash := sha256.Sum256([]byte(token))
+
+	query := `
+	  SELECT u.id, u.name, u.email, u.password, u.activated, u.created_at
+		FROM users u
+		INNER JOIN tokens t
+		ON u.id = t.user_id
+		WHERE u.activated = false AND t.hash = $1 AND t.expiry > $2;
+	`
+
+	err := m.DB.QueryRow(query, hash[:], time.Now()).Scan(
+		&user.ID,
+		&user.Name,
+		&user.Email,
+		&user.Password,
+		&user.Activated,
+		&user.CreatedAt,
+	)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrNoRecord
+		default:
+			return nil, err
+		}
+	}
+
+	return &user, nil
+}
+
+func (m *UserModel) Update(user *User) error {
+	query := `
+	  UPDATE users 
+		SET name = $1, activated = $2
+		WHERE id = $3;
+	`
+	args := []any{user.Name, user.Activated, user.ID}
+	_, err := m.DB.Exec(query, args...)
+	return err
 }

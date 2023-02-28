@@ -6,6 +6,8 @@ import (
 	"database/sql"
 	"encoding/base32"
 	"time"
+
+	"github.com/kickbu2towski/unicorn-be/cmd/api/internal/validator"
 )
 
 const (
@@ -32,6 +34,11 @@ func generateToken() (string, []byte, error) {
 	token := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(bytes)
 	hash := sha256.Sum256([]byte(token))
 	return token, hash[:], nil
+}
+
+func ValidateToken(v *validator.Validator, token string) {
+	v.Check(token == "", "token", "cannot be empty")
+	v.Check(len(token) != 26, "token", "must be 26 characters long")
 }
 
 func (m *TokenModel) New(userID int64, ttl time.Duration, scope string) (string, error) {
