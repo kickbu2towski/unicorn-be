@@ -27,6 +27,7 @@ func (app *application) registerUser(w http.ResponseWriter, r *http.Request) {
 		Email:    input.Email,
 		Password: input.Password,
 	}
+	user.GenerateHash()
 
 	v := validator.New()
 	if data.ValidateUser(v, user); !v.Valid() {
@@ -92,7 +93,7 @@ func (app *application) activateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3. get user for token
-	user, err := app.models.UserModel.GetForToken(input.Token)
+	user, err := app.models.UserModel.GetForToken(input.Token, data.ScopeActivation)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrNoRecord):
@@ -104,7 +105,14 @@ func (app *application) activateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 4. activate user
+	// 4. delete all the activation tokens for this user
+	err = app.models.TokenModel.DeleteAllForUser(user.ID, data.ScopeActivation)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// 5. activate user
 	user.Activated = true
 	err = app.models.UserModel.Update(user)
 	if err != nil {
@@ -112,7 +120,7 @@ func (app *application) activateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 5. send response
+	// 6. send response
 	err = app.writeJSON(w, envelope{"message": "user activation successful"}, nil, http.StatusOK)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)

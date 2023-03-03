@@ -21,8 +21,8 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func (u *User) setHash(password string) {
-	hash, _ := bcrypt.GenerateFromPassword([]byte(password), 12)
+func (u *User) GenerateHash() {
+	hash, _ := bcrypt.GenerateFromPassword([]byte(u.Password), 12)
 	u.Password = string(hash)
 }
 
@@ -63,7 +63,7 @@ func (m *UserModel) Insert(user *User) error {
 	return nil
 }
 
-func (m *UserModel) GetForToken(token string) (*User, error) {
+func (m *UserModel) GetForToken(token string, scope string) (*User, error) {
 	var user User
 	hash := sha256.Sum256([]byte(token))
 
@@ -72,10 +72,12 @@ func (m *UserModel) GetForToken(token string) (*User, error) {
 		FROM users u
 		INNER JOIN tokens t
 		ON u.id = t.user_id
-		WHERE u.activated = false AND t.hash = $1 AND t.expiry > $2;
+		WHERE u.activated = false AND t.hash = $1 AND t.expiry > $2 AND scope = $3;
 	`
 
-	err := m.DB.QueryRow(query, hash[:], time.Now()).Scan(
+	args := []any{hash[:], time.Now(), scope}
+
+	err := m.DB.QueryRow(query, args...).Scan(
 		&user.ID,
 		&user.Name,
 		&user.Email,

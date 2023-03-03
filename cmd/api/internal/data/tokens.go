@@ -71,3 +71,12 @@ func (m *TokenModel) Insert(token *Token) error {
 	_, err := m.DB.Exec(query, args...)
 	return err
 }
+
+func (m *TokenModel) DeleteAllForUser(userID int64, scope string) error {
+	query := `
+	  DELETE FROM tokens
+		WHERE user_id = $1 AND scope = $2;
+	`
+	_, err := m.DB.Exec(query, userID, scope)
+	return err
+}
