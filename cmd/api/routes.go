@@ -6,7 +6,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-func (app *application) Routes() *httprouter.Router {
+func (app *application) Routes() http.Handler {
 	router := httprouter.New()
 
 	router.NotFound = http.HandlerFunc(app.notFoundResponse)
@@ -19,5 +19,5 @@ func (app *application) Routes() *httprouter.Router {
 	router.HandlerFunc(http.MethodPut, "/v1/users/activate", app.activateUser)
 	router.HandlerFunc(http.MethodPost, "/v1/users/authenticate", app.createAuthToken)
 
-	return router
+	return app.authenticate(router)
 }

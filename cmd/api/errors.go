@@ -49,3 +49,8 @@ func (app *application) invalidAuthCredentialsResponse(w http.ResponseWriter, r 
 	message := "received invalid auth credentials"
 	app.errorResponse(w, r, message, http.StatusUnauthorized)
 }
+
+func (app *application) invalidAuthTokenResponse(w http.ResponseWriter, r *http.Request) {
+	message := "received invalid auth token"
+	app.errorResponse(w, r, message, http.StatusUnauthorized)
+}

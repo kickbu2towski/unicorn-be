@@ -12,6 +12,8 @@ import (
 
 var ErrDuplicateEmail = errors.New("duplicate email")
 
+var AnonymousUser = &User{}
+
 type User struct {
 	ID        int64     `json:"id"`
 	Name      string    `json:"name"`
@@ -24,6 +26,10 @@ type User struct {
 func (u *User) GenerateHash() {
 	hash, _ := bcrypt.GenerateFromPassword([]byte(u.Password), 12)
 	u.Password = string(hash)
+}
+
+func (u *User) IsAnonymousUser() bool {
+	return u == AnonymousUser
 }
 
 func (u *User) PasswordMatches(password string) bool {
@@ -86,7 +92,7 @@ func (m *UserModel) GetForToken(token string, scope string) (*User, error) {
 		FROM users u
 		INNER JOIN tokens t
 		ON u.id = t.user_id
-		WHERE u.activated = false AND t.hash = $1 AND t.expiry > $2 AND scope = $3;
+		WHERE t.hash = $1 AND t.expiry > $2 AND scope = $3;
 	`
 
 	args := []any{hash[:], time.Now(), scope}
