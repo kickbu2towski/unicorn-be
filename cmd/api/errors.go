@@ -44,3 +44,8 @@ func (app *application) methodNotAllowedResponse(w http.ResponseWriter, r *http.
 func (app *application) failedValidationResponse(w http.ResponseWriter, r *http.Request, err map[string]string) {
 	app.errorResponse(w, r, err, http.StatusUnprocessableEntity)
 }
+
+func (app *application) invalidAuthCredentialsResponse(w http.ResponseWriter, r *http.Request) {
+	message := "received invalid auth credentials"
+	app.errorResponse(w, r, message, http.StatusUnauthorized)
+}

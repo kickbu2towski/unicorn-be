@@ -58,7 +58,7 @@ func (app *application) registerUser(w http.ResponseWriter, r *http.Request) {
 			ActivationToken string
 			ID              int64
 		}{
-			ActivationToken: token,
+			ActivationToken: token.PlainTextToken,
 			ID:              user.ID,
 		}
 		err := app.mailer.Send(user.Email, "activate_user.tmpl", &tmplData)
@@ -74,7 +74,6 @@ func (app *application) registerUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) activateUser(w http.ResponseWriter, r *http.Request) {
-	// 1. read json
 	var input struct {
 		Token string `json:"token"`
 	}
@@ -85,14 +84,12 @@ func (app *application) activateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. validate token
 	v := validator.New()
 	if data.ValidateToken(v, input.Token); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
 
-	// 3. get user for token
 	user, err := app.models.UserModel.GetForToken(input.Token, data.ScopeActivation)
 	if err != nil {
 		switch {
@@ -105,14 +102,12 @@ func (app *application) activateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 4. delete all the activation tokens for this user
 	err = app.models.TokenModel.DeleteAllForUser(user.ID, data.ScopeActivation)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
 
-	// 5. activate user
 	user.Activated = true
 	err = app.models.UserModel.Update(user)
 	if err != nil {
@@ -120,9 +115,60 @@ func (app *application) activateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 6. send response
 	err = app.writeJSON(w, envelope{"message": "user activation successful"}, nil, http.StatusOK)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) createAuthToken(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequest(w, r, err.Error())
+		return
+	}
+
+	v := validator.New()
+	data.ValidateEmail(v, input.Email)
+	data.ValidatePassword(v, input.Password)
+
+	if !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	user, err := app.models.UserModel.GetByEmail(input.Email)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrNoRecord):
+			app.invalidAuthCredentialsResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	matches := user.PasswordMatches(input.Password)
+	if !matches {
+		app.invalidAuthCredentialsResponse(w, r)
+		return
+	}
+
+	expiry := 24 * time.Hour
+	token, err := app.models.TokenModel.New(user.ID, expiry, data.ScopeAuthentication)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, envelope{"auth_token": token}, nil, http.StatusOK)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
 	}
 }

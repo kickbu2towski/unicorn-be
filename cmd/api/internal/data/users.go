@@ -26,16 +26,30 @@ func (u *User) GenerateHash() {
 	u.Password = string(hash)
 }
 
+func (u *User) PasswordMatches(password string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+func ValidateEmail(v *validator.Validator, email string) {
+	v.Check(email == "", "email", "cannot be emty")
+	v.Check(!validator.Matches(email, validator.EmailRegexp), "email", "invalid email address")
+}
+
+func ValidatePassword(v *validator.Validator, password string) {
+	v.Check(password == "", "password", "cannot be empty")
+	v.Check(len(password) < 6, "password", "should be atleast 6 characters long")
+	v.Check(len(password) > 72, "password", "should be maximum 72 characters long")
+}
+
 func ValidateUser(v *validator.Validator, user *User) {
 	v.Check(user.Name == "", "name", "cannot be empty")
 	v.Check(len(user.Name) < 2, "name", "should be atleast 2 characters long")
-
-	v.Check(user.Password == "", "password", "cannot be empty")
-	v.Check(len(user.Password) < 6, "password", "should be atleast 6 characters long")
-	v.Check(len(user.Password) > 72, "password", "should be maximum 72 characters long")
-
-	v.Check(user.Email == "", "email", "cannot be empty")
-	v.Check(!validator.Matches(user.Email, validator.EmailRegexp), "email", "invalid email address")
+	ValidatePassword(v, user.Password)
+	ValidateEmail(v, user.Email)
 }
 
 type UserModel struct {
@@ -107,4 +121,26 @@ func (m *UserModel) Update(user *User) error {
 	args := []any{user.Name, user.Activated, user.ID}
 	_, err := m.DB.Exec(query, args...)
 	return err
+}
+
+func (m *UserModel) GetByEmail(email string) (*User, error) {
+	var user User
+
+	query := `
+	  SELECT id, password
+		FROM users
+		WHERE email = $1;
+	`
+
+	err := m.DB.QueryRow(query, email).Scan(&user.ID, &user.Password)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrNoRecord
+		default:
+			return nil, err
+		}
+	}
+
+	return &user, nil
 }

@@ -11,14 +11,16 @@ import (
 )
 
 const (
-	ScopeActivation = "activation"
+	ScopeActivation     = "activation"
+	ScopeAuthentication = "authentication"
 )
 
 type Token struct {
-	Hash   []byte    `json:"hash"`
-	Expiry time.Time `json:"expiry"`
-	UserID int64     `json:"user_id"`
-	Scope  string    `json:"scope"`
+	PlainTextToken string    `json:"token"`
+	Hash           []byte    `json:"-"`
+	Expiry         time.Time `json:"expiry"`
+	UserID         int64     `json:"-"`
+	Scope          string    `json:"-"`
 }
 
 type TokenModel struct {
@@ -41,25 +43,26 @@ func ValidateToken(v *validator.Validator, token string) {
 	v.Check(len(token) != 26, "token", "must be 26 characters long")
 }
 
-func (m *TokenModel) New(userID int64, ttl time.Duration, scope string) (string, error) {
+func (m *TokenModel) New(userID int64, ttl time.Duration, scope string) (*Token, error) {
 	token, hash, err := generateToken()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	t := &Token{
-		Hash:   hash,
-		Scope:  scope,
-		Expiry: time.Now().Add(ttl),
-		UserID: userID,
+		PlainTextToken: token,
+		Hash:           hash,
+		Scope:          scope,
+		Expiry:         time.Now().Add(ttl),
+		UserID:         userID,
 	}
 
 	err = m.Insert(t)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return token, nil
+	return t, nil
 }
 
 func (m *TokenModel) Insert(token *Token) error {
