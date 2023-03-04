@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/kickbu2towski/unicorn-be/cmd/api/internal/data"
@@ -35,6 +36,9 @@ type config struct {
 		username string
 		password string
 	}
+	cors struct {
+		safelist []string
+	}
 }
 
 func main() {
@@ -45,6 +49,12 @@ func main() {
 	flag.StringVar(&cfg.mail.sender, "mail-sender", os.Getenv("UNICORN_MAIL_SENDER"), "Mail sender")
 	flag.StringVar(&cfg.mail.username, "mail-username", os.Getenv("UNICORN_MAIL_USERNAME"), "Mail username")
 	flag.StringVar(&cfg.mail.password, "mail-password", os.Getenv("UNICORN_MAIL_PASSWORD"), "Mail password")
+
+	flag.Func("cors-safelist", "CORS safelist", func(s string) error {
+		cfg.cors.safelist = strings.Fields(s)
+		return nil
+	})
+
 	flag.Parse()
 
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)

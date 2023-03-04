@@ -19,5 +19,5 @@ func (app *application) Routes() http.Handler {
 	router.HandlerFunc(http.MethodPut, "/v1/users/activate", app.activateUser)
 	router.HandlerFunc(http.MethodPost, "/v1/users/authenticate", app.createAuthToken)
 
-	return app.authenticate(router)
+	return app.enableCORS(app.authenticate(router))
 }

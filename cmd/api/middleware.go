@@ -77,3 +77,30 @@ func (app *application) requireUserActivated(next http.HandlerFunc) http.Handler
 
 	return app.requireAuth(fn)
 }
+
+func (app *application) enableCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// TODO: when to set the header "Vary"?
+		origin := r.Header.Get("origin")
+
+		if origin != "" {
+			for _, val := range app.config.cors.safelist {
+				if val == origin {
+					w.Header().Set("Access-Control-Allow-Origin", val)
+
+					// handling preflight request
+					if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Headers") != "" {
+						w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, PUT, PATCH, DELETE")
+						w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+						w.WriteHeader(http.StatusOK)
+						return
+					}
+
+					break
+				}
+			}
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
